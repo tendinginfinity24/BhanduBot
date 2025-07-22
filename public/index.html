@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BhanduBot</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Using a more modern font and some tweaks */
+    body {
+      font-family: 'Poppins', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+  <div class="chat-container w-[450px] max-w-full h-[700px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+    
+    <!-- Header -->
+    <div class="header bg-blue-600 text-white p-5 flex items-center gap-4 flex-shrink-0">
+      <img src="bhandu.jpg" alt="Bhandu's Photo" class="w-10 h-10 rounded-full border-2 border-white/50" />
+      <div>
+        <h1 class="text-xl font-bold">BhanduBot</h1>
+        <p class="text-xs text-blue-200">Your quirky best friend</p>
+      </div>
+    </div>
+    
+    <!-- Chat Box -->
+    <div class="chat-box flex-1 p-5 overflow-y-auto flex flex-col gap-4" id="chat-box">
+      <!-- Messages will be appended here -->
+    </div>
+    
+    <!-- Input Box -->
+    <div class="input-box border-t border-gray-200 p-4 bg-white flex items-center gap-3">
+      <input type="text" id="user-input" placeholder="Type your message..." class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition" />
+      <button onclick="sendMessage()" class="bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-700 active:scale-95 transition">
+        Send
+      </button>
+    </div>
+    
+    <div class="credit text-xs text-gray-400 text-center py-2 bg-gray-50">
+      made by tendinginfinity
+    </div>
+  </div>
+
+  <script>
+    // --- Client-Side History Management ---
+    // This array now holds the conversation history in the browser.
+    const chatHistory = [];
+
+    const chatBox = document.getElementById("chat-box");
+    const userInput = document.getElementById("user-input");
+
+    /**
+     * Appends a message to the chat box UI.
+     * @param {string} sender - 'user' or 'bot'.
+     * @param {string} text - The message content.
+     * @returns {HTMLElement} The created message element.
+     */
+    function appendMessage(sender, text) {
+      const messageWrapper = document.createElement("div");
+      messageWrapper.className = `w-full flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
+      
+      const messageBubble = document.createElement("div");
+      messageBubble.className = `message max-w-[80%] p-3 rounded-2xl text-sm md:text-base ${sender === 'user' ? 'bg-blue-500 text-white rounded-br-lg' : 'bg-gray-200 text-gray-800 rounded-bl-lg'}`;
+      messageBubble.textContent = text;
+      
+      messageWrapper.appendChild(messageBubble);
+      chatBox.appendChild(messageWrapper);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      return messageBubble; // Return the bubble to allow updating its text
+    }
+
+    /**
+     * Sends the current conversation history to the backend.
+     * @param {Array} history - The array of chat messages.
+     * @returns {Promise<string>} The bot's reply.
+     */
+    async function getBotReply(history) {
+      try {
+        const response = await fetch("http://localhost:3000/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          // Send the entire history to the stateless backend.
+          body: JSON.stringify({ history: history })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.reply;
+      } catch (err) {
+        console.error("Fetch error:", err);
+        return "Oops! Bhandu is thinking too hard 🤯. Could not reach the server.";
+      }
+    }
+
+    /**
+     * Handles sending a user message.
+     */
+    async function sendMessage() {
+      const userText = userInput.value.trim();
+      if (!userText) return;
+
+      // 1. Add user message to UI and history
+      appendMessage("user", userText);
+      chatHistory.push({ role: "user", parts: [{ text: userText }] });
+      userInput.value = "";
+
+      // 2. Show a "thinking" indicator
+      const thinkingMessage = appendMessage("bot", "...");
+
+      // 3. Get bot's reply
+      const reply = await getBotReply(chatHistory);
+
+      // 4. Update "thinking" message with the actual reply
+      thinkingMessage.textContent = reply;
+      
+      // 5. Add bot's final reply to history
+      chatHistory.push({ role: "model", parts: [{ text: reply }] });
+    }
+
+    // Allow sending message with Enter key
+    userInput.addEventListener("keypress", function(event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Greet the user when the page loads
+    window.onload = () => {
+      const initialMessage = "Hey! I'm BhanduBot 🤖. Ask me anything!";
+      appendMessage("bot", initialMessage);
+      // Add the initial bot greeting to the history so it has context from the start.
+      chatHistory.push({ role: "model", parts: [{ text: initialMessage }] });
+    };
+  </script>
+
+</body>
+</html>
