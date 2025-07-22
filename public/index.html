@@ -79,7 +79,7 @@
      */
     async function getBotReply(history) {
       try {
-        const response = await fetch("http://localhost:3000/chat", {
+        const response = await fetch("https://bhandubot-backend.onrender.com/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           // Send the entire history to the stateless backend.
